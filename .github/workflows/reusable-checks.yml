@@ -148,7 +148,11 @@ jobs:
 
           REVIEWDOG_DIFF_FLAGS=()
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            git fetch --no-tags --prune origin "+refs/heads/${{ github.base_ref }}:refs/remotes/origin/${{ github.base_ref }}"
+            # Checkout uses fetch-depth: 0, so the base branch is usually present already.
+            # Fetching again without credentials fails on private repositories.
+            if ! git rev-parse --verify --quiet "refs/remotes/origin/${{ github.base_ref }}" > /dev/null; then
+              git fetch --no-tags --prune origin "+refs/heads/${{ github.base_ref }}:refs/remotes/origin/${{ github.base_ref }}"
+            fi
             REVIEWDOG_DIFF_FLAGS=(-diff="git diff --no-ext-diff --relative origin/${{ github.base_ref }}...HEAD")
           fi
 
