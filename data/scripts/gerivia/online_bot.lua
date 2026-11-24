@@ -258,7 +258,10 @@ end
 -- nem a que está mais perto de outro jogador do que de nós.
 function Bot.isTakenByOther(player, monster, others)
 	local mTarget = monster:getTarget()
-	if mTarget and mTarget:isPlayer() and mTarget:getId() ~= player:getId() then
+	if mTarget and mTarget:getId() == player:getId() then
+		return false -- a criatura está atacando o bot: ele revida
+	end
+	if mTarget and mTarget:isPlayer() then
 		return true
 	end
 	local mPos = monster:getPosition()

@@ -507,6 +507,13 @@ wolf.target = other
 p.target = nil
 tick()
 check(p.target == nil, "não ataca criatura que está brigando com outro jogador")
+wolf.target = p
+other.target = wolf
+other.pos = Position(104, 101, 7)
+tick()
+check(p.target == wolf, "revida criatura de outro jogador que está atacando o bot")
+other.target = nil
+other.pos = Position(90, 100, 7)
 wolf.target = nil
 other.near = false
 players[2] = nil
