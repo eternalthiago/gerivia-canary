@@ -3,11 +3,24 @@
 local root = arg[1] or "data/scripts"
 
 local now, ms = 1800000000, 0
-os.time = function() return now end
-function systemTime() return now * 1000 + ms end
+os.time = function()
+	return now
+end
+function systemTime()
+	return now * 1000 + ms
+end
 local pending = {}
-function addEvent(fn, delay, ...) pending[#pending + 1] = { fn = fn, args = { ... } } end
-local function tick() local p = pending; pending = {}; for _, e in ipairs(p) do e.fn((unpack or table.unpack)(e.args)) end; ms = ms + 1000 end
+function addEvent(fn, delay, ...)
+	pending[#pending + 1] = { fn = fn, args = { ... } }
+end
+local function tick()
+	local p = pending
+	pending = {}
+	for _, e in ipairs(p) do
+		e.fn((unpack or table.unpack)(e.args))
+	end
+	ms = ms + 1000
+end
 logger = { info = function() end, error = function() end }
 MESSAGE_EVENT_ADVANCE, MESSAGE_GAME_HIGHLIGHT = 1, 2
 TILESTATE_PROTECTIONZONE = 1
@@ -15,22 +28,54 @@ CONST_SLOT_BACKPACK = 3
 CONST_ME_MAGIC_BLUE = 1
 
 local handlers = { talk = {}, ev = {} }
-function TalkAction(w) local t = { w = w }; function t:separator() end; function t:groupType() end; function t:register() handlers.talk[self.w] = self end; return t end
-function CreatureEvent(n) local e = { n = n }; function e:register() handlers.ev[self.n] = self end; return e end
+function TalkAction(w)
+	local t = { w = w }
+	function t:separator() end
+	function t:groupType() end
+	function t:register()
+		handlers.talk[self.w] = self
+	end
+	return t
+end
+function CreatureEvent(n)
+	local e = { n = n }
+	function e:register()
+		handlers.ev[self.n] = self
+	end
+	return e
+end
 
 local alerts = {}
-db = { escapeString = function(s) return "'" .. tostring(s) .. "'" end }
-function db.query(q) if q:find("gerivia_alerts") then alerts[#alerts + 1] = q end; return true end
+db = {
+	escapeString = function(s)
+		return "'" .. tostring(s) .. "'"
+	end,
+}
+function db.query(q)
+	if q:find("gerivia_alerts") then
+		alerts[#alerts + 1] = q
+	end
+	return true
+end
 
 local ITEMS = { ["great health potion"] = { id = 239, w = 310 }, ["great mana potion"] = { id = 238, w = 310 }, ["wolf paw"] = { id = 5897, w = 80 } }
 function ItemType(name)
 	local d = ITEMS[name]
-	return { getId = function() return d and d.id or 0 end, getWeight = function() return d and d.w or 0 end }
+	return {
+		getId = function()
+			return d and d.id or 0
+		end,
+		getWeight = function()
+			return d and d.w or 0
+		end,
+	}
 end
 
 function Position(x, y, z)
 	local p = { x = x, y = y, z = z }
-	function p:getDistance(o) return math.max(math.abs(self.x - o.x), math.abs(self.y - o.y)) end
+	function p:getDistance(o)
+		return math.max(math.abs(self.x - o.x), math.abs(self.y - o.y))
+	end
 	function p:sendMagicEffect() end
 	return p
 end
@@ -39,9 +84,15 @@ local function kvStore()
 	local data = {}
 	local function scoped(prefix)
 		local s = {}
-		function s:scoped(n) return scoped(prefix .. n .. ".") end
-		function s:get(k) return data[prefix .. k] end
-		function s:set(k, v) data[prefix .. k] = v end
+		function s:scoped(n)
+			return scoped(prefix .. n .. ".")
+		end
+		function s:get(k)
+			return data[prefix .. k]
+		end
+		function s:set(k, v)
+			data[prefix .. k] = v
+		end
 		return s
 	end
 	return scoped("")
@@ -50,12 +101,24 @@ end
 local creatures = {}
 local function newMonster(name, x, y)
 	local m = { name = name, pos = Position(x, y, 7), hp = 100 }
-	function m:getName() return self.name end
-	function m:isMonster() return true end
-	function m:getMaster() return nil end
-	function m:getHealth() return self.hp end
-	function m:getPosition() return self.pos end
-	function m:getId() return 1000 + #creatures end
+	function m:getName()
+		return self.name
+	end
+	function m:isMonster()
+		return true
+	end
+	function m:getMaster()
+		return nil
+	end
+	function m:getHealth()
+		return self.hp
+	end
+	function m:getPosition()
+		return self.pos
+	end
+	function m:getId()
+		return 1000 + #creatures
+	end
 	creatures[#creatures + 1] = m
 	return m
 end
@@ -63,72 +126,186 @@ end
 local players = {}
 local function newPlayer(o)
 	local p = { id = o.id, pos = Position(100, 100, 7), hp = o.hp or 1000, maxhp = 1000, mana = 500, maxmana = 500, items = o.items or {}, bank = o.bank or 0, cap = o.cap or 100000, vip = o.vip, xp = 0, msgs = {}, cast = {}, moves = {}, kvs = kvStore(), pz = false, idleResets = 0, bp = o.bp or {} }
-	function p:getId() return self.id end
-	function p:getGuid() return self.id end
-	function p:getName() return "P" .. self.id end
-	function p:isMonster() return false end
-	function p:isInGhostMode() return false end
-	function p:getParty() return nil end
-	function p:getPosition() return self.pos end
-	function p:getHealth() return self.hp end
-	function p:getMaxHealth() return self.maxhp end
-	function p:getMana() return self.mana end
-	function p:getMaxMana() return self.maxmana end
-	function p:addHealth(n) self.hp = math.min(self.maxhp, self.hp + n) end
-	function p:addMana(n) self.mana = math.min(self.maxmana, self.mana + n) end
-	function p:getItemCount(id) return self.items[id] or 0 end
-	function p:removeItem(id, n) self.items[id] = (self.items[id] or 0) - n; return true end
-	function p:addItem(id, n) self.items[id] = (self.items[id] or 0) + n end
-	function p:getBankBalance() return self.bank end
-	function p:setBankBalance(v) self.bank = v end
-	function p:getFreeCapacity() return self.cap end
-	function p:isVip() return self.vip end
-	function p:getExperience() return self.xp end
-	function p:kv() return self.kvs end
-	function p:sendTextMessage(_, m) self.msgs[#self.msgs + 1] = m end
-	function p:sendCancelMessage(m) self.msgs[#self.msgs + 1] = "CANCEL: " .. m end
-	function p:showTextDialog(_, m) self.msgs[#self.msgs + 1] = m end
-	function p:getTile() local pl = self; return { hasFlag = function() return pl.pz end } end
-	function p:resetIdleTime() self.idleResets = self.idleResets + 1 end
-	function p:castSpellByWords(w) self.cast[#self.cast + 1] = w; return true end
-	function p:getTarget() return self.target end
-	function p:setTarget(t) self.target = t end
+	function p:getId()
+		return self.id
+	end
+	function p:getGuid()
+		return self.id
+	end
+	function p:getName()
+		return "P" .. self.id
+	end
+	function p:isMonster()
+		return false
+	end
+	function p:isInGhostMode()
+		return false
+	end
+	function p:getParty()
+		return nil
+	end
+	function p:getPosition()
+		return self.pos
+	end
+	function p:getHealth()
+		return self.hp
+	end
+	function p:getMaxHealth()
+		return self.maxhp
+	end
+	function p:getMana()
+		return self.mana
+	end
+	function p:getMaxMana()
+		return self.maxmana
+	end
+	function p:addHealth(n)
+		self.hp = math.min(self.maxhp, self.hp + n)
+	end
+	function p:addMana(n)
+		self.mana = math.min(self.maxmana, self.mana + n)
+	end
+	function p:getItemCount(id)
+		return self.items[id] or 0
+	end
+	function p:removeItem(id, n)
+		self.items[id] = (self.items[id] or 0) - n
+		return true
+	end
+	function p:addItem(id, n)
+		self.items[id] = (self.items[id] or 0) + n
+	end
+	function p:getBankBalance()
+		return self.bank
+	end
+	function p:setBankBalance(v)
+		self.bank = v
+	end
+	function p:getFreeCapacity()
+		return self.cap
+	end
+	function p:isVip()
+		return self.vip
+	end
+	function p:getExperience()
+		return self.xp
+	end
+	function p:kv()
+		return self.kvs
+	end
+	function p:sendTextMessage(_, m)
+		self.msgs[#self.msgs + 1] = m
+	end
+	function p:sendCancelMessage(m)
+		self.msgs[#self.msgs + 1] = "CANCEL: " .. m
+	end
+	function p:showTextDialog(_, m)
+		self.msgs[#self.msgs + 1] = m
+	end
+	function p:getTile()
+		local pl = self
+		return {
+			hasFlag = function()
+				return pl.pz
+			end,
+		}
+	end
+	function p:resetIdleTime()
+		self.idleResets = self.idleResets + 1
+	end
+	function p:castSpellByWords(w)
+		self.cast[#self.cast + 1] = w
+		return true
+	end
+	function p:getTarget()
+		return self.target
+	end
+	function p:setTarget(t)
+		self.target = t
+	end
 	function p:setFollowCreature() end
-	function p:getPathTo(pos) if pos.blocked then return false end; return { 2 } end
-	function p:move(d) self.moves[#self.moves + 1] = d end
+	function p:getPathTo(pos)
+		if pos.blocked then
+			return false
+		end
+		return { 2 }
+	end
+	function p:move(d)
+		self.moves[#self.moves + 1] = d
+	end
 	function p:registerEvent() end
 	function p:getSlotItem(slot)
-		if slot ~= CONST_SLOT_BACKPACK then return nil end
+		if slot ~= CONST_SLOT_BACKPACK then
+			return nil
+		end
 		local pl = self
-		return { isContainer = function() return true end, getItems = function()
-			local list = {}
-			for i, it in ipairs(pl.bp) do
-				list[#list + 1] = { getName = function() return it.name end, getCount = function() return it.count end, remove = function() it.gone = true; return true end }
-			end
-			return list
-		end }
+		return {
+			isContainer = function()
+				return true
+			end,
+			getItems = function()
+				local list = {}
+				for i, it in ipairs(pl.bp) do
+					list[#list + 1] = {
+						getName = function()
+							return it.name
+						end,
+						getCount = function()
+							return it.count
+						end,
+						remove = function()
+							it.gone = true
+							return true
+						end,
+					}
+				end
+				return list
+			end,
+		}
 	end
 	players[p.id] = p
 	return p
 end
-function Player(id) return players[id] end
+function Player(id)
+	return players[id]
+end
 
 Game = {}
 function Game.getSpectators(pos, multi, onlyPlayers)
 	local out = {}
-	for _, pl in pairs(players) do if pl.near or pl.pos == pos then out[#out + 1] = pl end end
-	if not onlyPlayers then for _, m in ipairs(creatures) do out[#out + 1] = m end end
+	for _, pl in pairs(players) do
+		if pl.near or pl.pos == pos then
+			out[#out + 1] = pl
+		end
+	end
+	if not onlyPlayers then
+		for _, m in ipairs(creatures) do
+			out[#out + 1] = m
+		end
+	end
 	return out
 end
 
-Gerivia = { formatDuration = function(s) return s .. "s" end }
+Gerivia = {
+	formatDuration = function(s)
+		return s .. "s"
+	end,
+}
 dofile(root .. "/lib/gerivia_bot_config.lua")
 dofile(root .. "/gerivia/online_bot.lua")
 
 local fails, checks = 0, 0
-local function check(c, m) checks = checks + 1; if not c then fails = fails + 1; print("FALHOU: " .. m) end end
+local function check(c, m)
+	checks = checks + 1
+	if not c then
+		fails = fails + 1
+		print("FALHOU: " .. m)
+	end
+end
 local bot = handlers.talk["!bot"]
-local function last(p) return p.msgs[#p.msgs] or "" end
+local function last(p)
+	return p.msgs[#p.msgs] or ""
+end
 
 -- configuração
 local p = newPlayer({ id = 1, items = { [239] = 50, [238] = 50 }, bank = 100000, vip = false })
@@ -159,7 +336,10 @@ check(p.idleResets == 1, "evita kick por inatividade")
 check(p.cast[1] == "exura med ico", "magia de cura abaixo de 70%")
 p.cast = {}
 ms = ms + 5000
-p.castSpellByWords = function(self, w) self.cast[#self.cast + 1] = w; return w ~= "exura med ico" end
+p.castSpellByWords = function(self, w)
+	self.cast[#self.cast + 1] = w
+	return w ~= "exura med ico"
+end
 tick()
 check(p.items[239] == 49 and p.hp > 500, "usa poção de vida quando a magia falha")
 

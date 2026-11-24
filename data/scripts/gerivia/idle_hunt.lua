@@ -115,10 +115,7 @@ local function startHunt(player, areaId, hours)
 
 	local snap = snapshotOf(player)
 	local seed = math.random(1, 2147483646)
-	db.query(string.format(
-		"INSERT INTO `idle_hunts` (`player_id`, `account_id`, `area_id`, `started_at`, `max_seconds`, `supplies_cost`, `rng_seed`, `ip`, `snapshot`) VALUES (%d, %d, %s, %d, %d, %d, %d, %d, %s)",
-		player:getGuid(), player:getAccountId(), db.escapeString(area.id), os.time(), hours * 3600, cost, seed, ip, db.escapeString(Gerivia.encodeSnapshot(snap))
-	))
+	db.query(string.format("INSERT INTO `idle_hunts` (`player_id`, `account_id`, `area_id`, `started_at`, `max_seconds`, `supplies_cost`, `rng_seed`, `ip`, `snapshot`) VALUES (%d, %d, %s, %d, %d, %d, %d, %d, %s)", player:getGuid(), player:getAccountId(), db.escapeString(area.id), os.time(), hours * 3600, cost, seed, ip, db.escapeString(Gerivia.encodeSnapshot(snap))))
 	logger.info("[GeriviaIdle] {} iniciou {} por {}h (custo {})", player:getName(), area.id, hours, cost)
 
 	player:sendTextMessage(MESSAGE_EVENT_ADVANCE, string.format("Você parte para %s por até %d h. Até logo!", area.name, hours))
