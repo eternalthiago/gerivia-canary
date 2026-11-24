@@ -4083,11 +4083,16 @@ int PlayerFunctions::luaPlayerGetIdleTime(lua_State* L) {
 	return 1;
 }
 
+/***
+ * @function Player:resetIdleTime
+ * Resets the idle timer so the player is not kicked for inactivity.
+ * @return boolean
+ */
 int PlayerFunctions::luaPlayerResetIdleTime(lua_State* L) {
 	// player:resetIdleTime()
 	const auto &player = Lua::getUserdataShared<Player>(L, 1, "Player");
 	if (!player) {
-		lua_pushnil(L);
+		Lua::pushBoolean(L, false);
 		return 1;
 	}
 
@@ -4096,13 +4101,18 @@ int PlayerFunctions::luaPlayerResetIdleTime(lua_State* L) {
 	return 1;
 }
 
+/***
+ * @function Player:castSpellByWords
+ * Casts an instant spell as if the player had said it: vocation, level, mana,
+ * cooldown and target checks all apply.
+ * @param words string
+ * @return boolean true only when the spell was cast
+ */
 int PlayerFunctions::luaPlayerCastSpellByWords(lua_State* L) {
 	// player:castSpellByWords(words)
-	// Casts an instant spell as if the player had said it: vocation, level, mana,
-	// cooldown and target checks all apply. Returns true only when the spell was cast.
 	const auto &player = Lua::getUserdataShared<Player>(L, 1, "Player");
 	if (!player) {
-		lua_pushnil(L);
+		Lua::pushBoolean(L, false);
 		return 1;
 	}
 

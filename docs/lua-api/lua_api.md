@@ -3980,6 +3980,11 @@ C++ Lua binding handlers and registration lines can override inferred signatures
 - Returns: `boolean`
 - Source: `src/lua/functions/creatures/player/player_functions.cpp`
 
+#### `Player:castSpellByWords(words: string)`
+
+- Returns: `boolean`
+- Source: `src/lua/functions/creatures/player/player_functions.cpp`
+
 #### `Player:changeName(newName: string)`
 
 - Returns: `boolean`
@@ -4888,6 +4893,11 @@ C++ Lua binding handlers and registration lines can override inferred signatures
 #### `Player:resetCharmsBestiary()`
 
 - Returns: `boolean|nil`
+- Source: `src/lua/functions/creatures/player/player_functions.cpp`
+
+#### `Player:resetIdleTime()`
+
+- Returns: `boolean`
 - Source: `src/lua/functions/creatures/player/player_functions.cpp`
 
 #### `Player:resetOldCharms()`

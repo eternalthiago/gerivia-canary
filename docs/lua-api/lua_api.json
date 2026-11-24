@@ -5968,6 +5968,14 @@
         "source": "src/lua/functions/creatures/player/player_functions.cpp"
       },
       {
+        "name": "castSpellByWords",
+        "params": [
+          "words: string"
+        ],
+        "return": "boolean",
+        "source": "src/lua/functions/creatures/player/player_functions.cpp"
+      },
+      {
         "name": "changeName",
         "params": [
           "newName: string"
@@ -7253,6 +7261,12 @@
         "name": "resetCharmsBestiary",
         "params": [],
         "return": "boolean|nil",
+        "source": "src/lua/functions/creatures/player/player_functions.cpp"
+      },
+      {
+        "name": "resetIdleTime",
+        "params": [],
+        "return": "boolean",
         "source": "src/lua/functions/creatures/player/player_functions.cpp"
       },
       {

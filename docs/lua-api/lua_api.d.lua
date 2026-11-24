@@ -3174,6 +3174,10 @@ function Player:canLearnSpell(spellName) end
 ---@return boolean
 function Player:canReceiveLoot() end
 
+---@param words string
+---@return boolean
+function Player:castSpellByWords(words) end
+
 ---@param newName string
 ---@return boolean
 function Player:changeName(newName) end
@@ -3832,6 +3836,9 @@ function Player:removeTransferableCoins(coins) end
 
 ---@return boolean|nil
 function Player:resetCharmsBestiary() end
+
+---@return boolean
+function Player:resetIdleTime() end
 
 ---@return boolean
 function Player:resetOldCharms() end
