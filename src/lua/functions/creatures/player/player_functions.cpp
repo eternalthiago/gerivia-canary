@@ -4104,9 +4104,9 @@ int PlayerFunctions::luaPlayerResetIdleTime(lua_State* L) {
 /***
  * @function Player:castSpellByWords
  * Casts an instant spell as if the player had said it: vocation, level, mana,
- * cooldown and target checks all apply.
+ * cooldown and target checks all apply. Returns true only when the spell was cast.
  * @param words string
- * @return boolean true only when the spell was cast
+ * @return boolean
  */
 int PlayerFunctions::luaPlayerCastSpellByWords(lua_State* L) {
 	// player:castSpellByWords(words)
