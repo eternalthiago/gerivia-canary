@@ -2015,12 +2015,16 @@ std::string getFormattedTimeRemaining(uint32_t time) {
 		return output.str();
 	}
 
-	const auto hours = static_cast<int>(std::floor((timeRemaining % 86400) / 3600));
-	const auto minutes = static_cast<int>(std::floor((timeRemaining % 3600) / 60));
-	const auto seconds = static_cast<int>(timeRemaining % 60);
+	if (timeRemaining <= 0) {
+		return "0 minutes";
+	}
 
-	if (hours == 0 && minutes == 0 && seconds > 0) {
-		output << " less than 1 minute";
+	// Up to 2 days, show total hours (e.g. a 1-day grant shows "24 hours", not an empty string).
+	const auto hours = static_cast<int>(timeRemaining / 3600);
+	const auto minutes = static_cast<int>(std::floor((timeRemaining % 3600) / 60));
+
+	if (hours == 0 && minutes == 0) {
+		output << "less than 1 minute";
 	} else {
 		if (hours > 0) {
 			output << hours << " hour" << (hours != 1 ? "s" : "");
