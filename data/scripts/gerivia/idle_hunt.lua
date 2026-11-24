@@ -128,6 +128,13 @@ local function startHunt(player, areaId, hours)
 	end, 1500)
 end
 
+Gerivia.Idle = {
+	start = startHunt,
+	snapshot = snapshotOf,
+	activeHunt = activeHunt,
+	listText = listAreas,
+}
+
 local talk = TalkAction("!idle")
 
 function talk.onSay(player, words, param)
@@ -135,7 +142,15 @@ function talk.onSay(player, words, param)
 		return true
 	end
 	param = (param or ""):gsub("^%s+", ""):gsub("%s+$", "")
-	if param == "" or param == "lista" then
+	if param == "" then
+		if Gerivia.Menu then
+			Gerivia.Menu.idle(player)
+		else
+			listAreas(player)
+		end
+		return true
+	end
+	if param == "lista" then
 		listAreas(player)
 		return true
 	end

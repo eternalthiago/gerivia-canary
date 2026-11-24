@@ -394,5 +394,56 @@ rows[2].started_at = now - 5 * 60
 login(c3)
 check(rows[2].status == "cancelled" and c3.bank == bk + 100, "hunt curta cancelada com reembolso")
 
+-- menu da hunt idle
+local lastWindow = {}
+ModalWindow = function(o)
+	local w = { title = o.title, message = o.message, choices = {}, buttons = {} }
+	function w:addChoice(text)
+		self.choices[#self.choices + 1] = { id = #self.choices + 1, text = text }
+	end
+	function w:addButton(name, cb)
+		self.buttons[#self.buttons + 1] = { name = name, callback = cb }
+	end
+	function w:setDefaultEnterButton() end
+	function w:setDefaultEscapeButton() end
+	function w:sendToPlayer(pl)
+		lastWindow[pl:getGuid()] = self
+	end
+	return w
+end
+local function press(pl, buttonName, choiceText)
+	local w = lastWindow[pl:getGuid()]
+	local choice
+	for _, c in ipairs(w.choices) do
+		if choiceText and c.text:find(choiceText, 1, true) then
+			choice = c
+			break
+		end
+	end
+	for _, b in ipairs(w.buttons) do
+		if b.name == buttonName then
+			return b.callback(pl, b, choice)
+		end
+	end
+	error("botão não encontrado: " .. buttonName)
+end
+dofile(root .. "/gerivia/menus.lua")
+accounts[5] = { creation = now - 40 * 86400 }
+local mp = newPlayer({ guid = 6, acc = 5, level = 30, bank = 10000, ip = 99 })
+idle.onSay(mp, "!idle", "")
+check(lastWindow[6] and lastWindow[6].title == "Hunts idle", "!idle abre o menu de hunts")
+local locked = false
+for _, c in ipairs(lastWindow[6].choices) do
+	if c.text:find("Aranhas Gigantes (nível 65+)", 1, true) then
+		locked = true
+	end
+end
+check(locked, "hunt acima do nível aparece bloqueada")
+press(mp, "Ver", "Labirinto dos Minotauros")
+check(lastWindow[6].title == "Labirinto dos Minotauros" and lastWindow[6].message:find("Minotaur, Minotaur Archer"), "detalhes da hunt")
+local before = #rows
+press(mp, "Iniciar", "2 horas")
+check(#rows == before + 1 and rows[#rows].max_seconds == 7200, "menu inicia a hunt com as horas escolhidas")
+
 print(string.format("%d/%d verificações de integração passaram", checks - fails, checks))
 os.exit(fails == 0 and 0 or 1)

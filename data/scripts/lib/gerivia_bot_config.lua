@@ -14,7 +14,8 @@ Gerivia.BotConfig = {
 	maxAttackSpells = 3,
 	potionCooldownMs = 1000,
 	spellAttemptMs = 1000,
-	pauseWhenPlayerNear = true, -- pausa o ataque se outro jogador (fora da party) aparecer na tela
+	pauseWhenPlayerNear = false, -- true: pausa o ataque se outro jogador (fora da party) aparecer na tela
+	shareRespawn = true, -- divide o respawn: não ataca criatura que outro jogador está caçando
 
 	healthPotions = {
 		["health potion"] = { 125, 175 },

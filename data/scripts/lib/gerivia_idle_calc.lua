@@ -196,9 +196,19 @@ function Calc.estimate(area, snapshot, hours, cfg, xpRate)
 	if snapshot.vip then
 		xpMult = xpMult * (1 + cfg.vip.idleXpBonus)
 	end
+	local lootMult = (snapshot.newbie and cfg.newbie.enabled) and (1 + cfg.newbie.lootBonus) or 1
+	local itemsValue = 0
+	for _, entry in ipairs(area.loot) do
+		local chance = entry.chance * lootMult
+		if entry.rare then
+			chance = chance * cfg.idle.rareChanceMultiplier
+		end
+		itemsValue = itemsValue + kills * math.min(1, chance) * ((entry.min or 1) + (entry.max or 1)) / 2 * entry.value
+	end
 	return {
 		efficiency = E,
 		kills = kills,
+		itemsValue = math.floor(itemsValue),
 		xp = math.floor(kills * area.xpPerKill * xpMult),
 		gold = math.floor(kills * (area.goldMin + area.goldMax) / 2),
 		suppliesCost = math.floor(area.suppliesPerHour * hours),

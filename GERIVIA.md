@@ -12,9 +12,12 @@ Mapa, cliente e gráficos não fazem parte deste repositório.
 | Loot automático | `config.lua.dist` (`autoLoot = true`, `autoBank = true`) + `newbie_vip.lua` | Ligado por padrão para todo personagem; `!autoloot off/on/all`. Ouro vai para o banco. |
 | Bônus de iniciante (7 dias) | `data/scripts/gerivia/newbie_vip.lua` | +50% XP e 20% de chance de rolagem extra de loot nos 7 primeiros dias da conta; também vale no idle. |
 | 24 h de VIP grátis | `data/scripts/gerivia/newbie_vip.lua` | No primeiro login de cada conta, uma vez. |
+| Menus no jogo | `data/scripts/gerivia/menus.lua` | `!menu` abre a janela do Gerivia (o botão "Menu" do cliente só envia `!menu`). Hunts idle com estimativa e escolha de horas; bot com cura, mana, magias (só as que o personagem sabe), alvos (criaturas na tela), rota, respawn privado, venda e reposição VIP. `!idle` e `!bot` sem parâmetros abrem o menu de cada um. |
+| Respawn privado do bot (VIP) | `data/scripts/gerivia/private_hunt.lua`, `data/scripts/lib/gerivia_private_hunt_config.lua` | O VIP escolhe a hunt no menu; ao ligar o bot vai para uma sala só dele, com criaturas que renascem a cada 30 s. Ao desligar, sair ou morrer, a sala é liberada. **As salas precisam ser montadas no mapa** e cadastradas no config (entrada, limites, pontos de spawn e rota). |
+| Respawn dividido (sem VIP) | `online_bot.lua` (`shareRespawn`) | Sem VIP o bot caça no mapa normal. Com outro jogador no respawn ele não ataca criatura que está brigando com o outro ou que está mais perto dele. |
 | Bot online (idle com o personagem logado) | `data/scripts/gerivia/online_bot.lua`, `data/scripts/lib/gerivia_bot_config.lua` | `!bot` mostra status e comandos. Alvo, magias de ataque, cura por magia e poção, mana, rota (cavebot) e loot automático. Limite de 3 h/dia (VIP 8 h). |
 | Alertas do bot | `online_bot.lua` + tabela `gerivia_alerts` | Vida baixa, poucas poções, capacidade, jogador por perto (pausa o ataque), morte e fim do bot. Aparecem no jogo e ficam no banco para o site. |
-| VIP: vender loot e repor supplies na hunt | `online_bot.lua` | `!bot vender add <item>` e `!bot repor <qtd>`. A cada 60 s vende os itens escolhidos (dinheiro no banco) e compra poções com o banco. Preços em `gerivia_bot_config.lua`. |
+| VIP: vender loot e repor supplies na hunt | `online_bot.lua` | Pelo menu: itens para vender e, para cada item de reposição, quantos manter. A cada 60 s vende (dinheiro no banco) e compra com o banco. Preços em `gerivia_bot_config.lua`. |
 | VIP (+10% XP, idle até 16 h) | `config.lua.dist` (`vipSystemEnabled = true`, `vipBonusExp = 10`) + calculadora | VIP = dias de premium da conta. |
 
 Todos os números ficam em `data/scripts/lib/gerivia_config.lua` e `gerivia_idle_areas.lua`.

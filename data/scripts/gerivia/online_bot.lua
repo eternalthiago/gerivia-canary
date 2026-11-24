@@ -48,7 +48,8 @@ local defaults = {
 	targets = "", -- vazio = todos; nomes separados por ;
 	route = "", -- "x,y,z;x,y,z"
 	sellList = "", -- itens separados por ;
-	refillAmount = 0,
+	refillAmount = 0, -- formato antigo: mesma quantidade para as poções de cura e mana
+	refillList = "", -- "nome=quantidade;nome=quantidade" (VIP)
 }
 
 function Bot.getSettings(player)
@@ -67,6 +68,7 @@ end
 local function setSetting(player, key, value)
 	kv(player):set(key, value)
 end
+Bot.set = setSetting
 
 local function split(str)
 	local out = {}
@@ -76,13 +78,19 @@ local function split(str)
 	return out
 end
 
-local function parseRoute(str)
+local parseRoute
+function Bot.split(str)
+	return split(str)
+end
+
+function parseRoute(str)
 	local route = {}
 	for x, y, z in string.gmatch(str or "", "(%d+),(%d+),(%d+)") do
 		route[#route + 1] = Position(tonumber(x), tonumber(y), tonumber(z))
 	end
 	return route
 end
+Bot.parseRoute = parseRoute
 
 -- Alertas ------------------------------------------------------------------
 
@@ -216,11 +224,46 @@ local function otherPlayerNear(player)
 	return nil
 end
 
+-- Respawn dividido: não "rouba" criatura que está brigando com outro jogador
+-- nem a que está mais perto de outro jogador do que de nós.
+function Bot.isTakenByOther(player, monster, others)
+	local mTarget = monster:getTarget()
+	if mTarget and mTarget:isPlayer() and mTarget:getId() ~= player:getId() then
+		return true
+	end
+	local mPos = monster:getPosition()
+	local myDist = player:getPosition():getDistance(mPos)
+	for _, other in ipairs(others) do
+		if other:getTarget() and other:getTarget():getId() == monster:getId() then
+			return true
+		end
+		if other:getPosition():getDistance(mPos) < myDist then
+			return true
+		end
+	end
+	return false
+end
+
+local function otherPlayers(player)
+	local out = {}
+	local party = player:getParty()
+	for _, spec in ipairs(Game.getSpectators(player:getPosition(), false, true, cfg().targetRangeX + 2, cfg().targetRangeX + 2, cfg().targetRangeY + 2, cfg().targetRangeY + 2)) do
+		if spec:getId() ~= player:getId() and not spec:isInGhostMode() then
+			local sameParty = party and spec:getParty() and spec:getParty() == party
+			if not sameParty then
+				out[#out + 1] = spec
+			end
+		end
+	end
+	return out
+end
+
 local function pickTarget(player, targets)
 	local pos = player:getPosition()
 	local best, bestDist
+	local others = cfg().shareRespawn and otherPlayers(player) or {}
 	for _, spec in ipairs(Game.getSpectators(pos, false, false, cfg().targetRangeX, cfg().targetRangeX, cfg().targetRangeY, cfg().targetRangeY)) do
-		if spec:isMonster() and not spec:getMaster() and spec:getHealth() > 0 and isWanted(spec, targets) then
+		if spec:isMonster() and not spec:getMaster() and spec:getHealth() > 0 and isWanted(spec, targets) and not Bot.isTakenByOther(player, spec, others) then
 			local d = pos:getDistance(spec:getPosition())
 			if (not bestDist or d < bestDist) and player:getPathTo(spec:getPosition(), 0, 1, true, true, 12) then
 				best, bestDist = spec, d
@@ -291,17 +334,51 @@ function Bot.sellLoot(player, s)
 	return earned
 end
 
-function Bot.refill(player, s)
-	local target = math.min(s.refillAmount, cfg().vip.maxRefillPerItem)
-	if target <= 0 then
-		return 0
+-- Lista de reposição: { [nome] = quantidade }. Usa refillList; se vazia, o formato antigo.
+function Bot.refillTargets(s)
+	local targets = {}
+	for name, qty in string.gmatch(s.refillList or "", "([^;=]+)=(%d+)") do
+		targets[name] = math.min(tonumber(qty), cfg().vip.maxRefillPerItem)
 	end
+	if next(targets) == nil and (s.refillAmount or 0) > 0 then
+		for _, name in ipairs({ s.healPotion, s.manaPotion }) do
+			if name ~= "" then
+				targets[name] = math.min(s.refillAmount, cfg().vip.maxRefillPerItem)
+			end
+		end
+	end
+	return targets
+end
+
+function Bot.encodeRefill(targets)
+	local names = {}
+	for name, qty in pairs(targets) do
+		if qty > 0 then
+			names[#names + 1] = name
+		end
+	end
+	table.sort(names)
+	local out = {}
+	for _, name in ipairs(names) do
+		out[#out + 1] = name .. "=" .. targets[name]
+	end
+	return table.concat(out, ";")
+end
+
+function Bot.refill(player, s)
+	local targets = Bot.refillTargets(s)
+	local names = {}
+	for name in pairs(targets) do
+		names[#names + 1] = name
+	end
+	table.sort(names)
 	local spent = 0
-	for _, name in ipairs({ s.healPotion, s.manaPotion }) do
+	for _, name in ipairs(names) do
+		local target = targets[name]
 		local price = cfg().vip.supplyPrices[name]
-		local itemType = name ~= "" and ItemType(name)
+		local itemType = ItemType(name)
 		local id = itemType and itemType:getId() or 0
-		if price and id ~= 0 then
+		if price and id ~= 0 and target > 0 then
 			local missing = target - player:getItemCount(id)
 			if missing > 0 then
 				local affordable = math.min(missing, math.floor(player:getBankBalance() / price))
@@ -334,6 +411,9 @@ function Bot.stop(player, reason)
 	addUsage(player, now() - state.lastUsage)
 	player:setTarget(nil)
 	player:setFollowCreature(nil)
+	if state.privateRoom and Gerivia.PrivateHunt then
+		Gerivia.PrivateHunt.leave(player, state.privateRoom, reason ~= "morte")
+	end
 	local xp = player:getExperience() - state.startXp
 	Bot.alert(player, "stop", string.format("Bot desligado: %s. Sessão: %s, +%d XP, %d poções usadas.", reason, Gerivia.formatDuration(now() - state.startedAt), xp, state.potionsUsed), false)
 end
@@ -384,7 +464,7 @@ function Bot.tick(playerId, session)
 	local potions = supplyCount(player, s.healPotion)
 	if potions and potions < c.alerts.lowSupplyCount then
 		Bot.alert(player, "low-supply", string.format("Restam %d %s.", potions, s.healPotion), state)
-		if potions == 0 and hp < c.stop.noSupplyAndHealthPercent and not (player:isVip() and s.refillAmount > 0) then
+		if potions == 0 and hp < c.stop.noSupplyAndHealthPercent and not (player:isVip() and (Bot.refillTargets(s)[s.healPotion] or 0) > 0) then
 			Bot.stop(player, "acabaram as poções de vida")
 			return
 		end
@@ -426,7 +506,15 @@ function Bot.tick(playerId, session)
 		end
 	end
 
+	if c.shareRespawn and not state.privateRoom and #otherPlayers(player) > 0 then
+		Bot.alert(player, "player-near", "Outro jogador no respawn. O bot divide as criaturas com ele.", state)
+	end
+
 	local target = player:getTarget()
+	if target and target:isMonster() and c.shareRespawn and Bot.isTakenByOther(player, target, otherPlayers(player)) then
+		player:setTarget(nil)
+		target = nil
+	end
 	if not target or not target:isMonster() or target:getHealth() <= 0 then
 		target = pickTarget(player, split(s.targets))
 		if target then
@@ -438,7 +526,8 @@ function Bot.tick(playerId, session)
 	if target then
 		castAttack(player, state, s)
 	else
-		walkRoute(player, state, parseRoute(s.route))
+		local route = state.privateRoom and state.privateRoom.route or parseRoute(s.route)
+		walkRoute(player, state, route)
 	end
 
 	addEvent(Bot.tick, c.tickMs, playerId, session)
@@ -469,6 +558,15 @@ function Bot.start(player)
 		waypoint = 1,
 		lastAlert = {},
 	}
+	local state = Bot.active[player:getId()]
+	if player:isVip() and Gerivia.PrivateHunt and Gerivia.PrivateHunt.chosen(player) then
+		local room, err = Gerivia.PrivateHunt.enter(player)
+		if room then
+			state.privateRoom = room
+		else
+			player:sendTextMessage(MESSAGE_EVENT_ADVANCE, "[Bot] " .. err .. " O bot vai caçar no mapa normal.")
+		end
+	end
 	addEvent(Bot.tick, cfg().tickMs, player:getId(), Bot.sessionCounter)
 	return true
 end
@@ -486,7 +584,7 @@ local function status(player)
 		"Alvos: " .. (s.targets ~= "" and s.targets:gsub(";", ", ") or "todos"),
 		"Rota: " .. #parseRoute(s.route) .. " pontos",
 		"Vender (VIP): " .. (s.sellList ~= "" and s.sellList:gsub(";", ", ") or "-"),
-		"Repor (VIP): " .. (s.refillAmount > 0 and (s.refillAmount .. " de cada poção") or "-"),
+		"Repor (VIP): " .. (Bot.encodeRefill(Bot.refillTargets(s)) ~= "" and Bot.encodeRefill(Bot.refillTargets(s)):gsub(";", ", ") or "-"),
 		"",
 		"Comandos: !bot on/off | cura <%> <poção> | mana <%> <poção> | curamagia <%> <palavras> | magia <palavras>/limpar | alvo todos/add <nome>/limpar | rota add/limpar | vender add <item>/limpar | repor <qtd>",
 	}
@@ -494,6 +592,10 @@ local function status(player)
 end
 
 local function appendList(current, value, max)
+	return Bot.appendList(current, value, max)
+end
+
+function Bot.appendList(current, value, max)
 	local list = split(current)
 	for _, v in ipairs(list) do
 		if v:lower() == value:lower() then
@@ -518,7 +620,9 @@ function talk.onSay(player, words, param)
 	cmd = cmd and cmd:lower() or ""
 	local s = Bot.getSettings(player)
 
-	if cmd == "" or cmd == "status" then
+	if cmd == "" and Gerivia.Menu then
+		Gerivia.Menu.bot(player)
+	elseif cmd == "" or cmd == "status" then
 		status(player)
 	elseif cmd == "on" then
 		local ok, err = Bot.start(player)
