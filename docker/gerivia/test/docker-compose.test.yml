@@ -1,0 +1,8 @@
+# Gerivia: sobrescreve o servidor do quickstart para usar os scripts desta branch.
+#   docker compose -f docker-compose.yml -f gerivia/test/docker-compose.test.yml up -d --build db server
+services:
+  server:
+    image: gerivia-canary:test
+    build:
+      context: ..  # relativo a docker/ (pasta do primeiro arquivo do compose)
+      dockerfile: docker/gerivia/test/Dockerfile

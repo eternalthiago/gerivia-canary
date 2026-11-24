@@ -28,26 +28,25 @@ function welcome.onLogin(player)
 		end
 	end
 
+	local newbieKv = player:kv():scoped("gerivia")
 	if Gerivia.isNewbie(player) then
+		newbieKv:set("newbie-until", Gerivia.accountCreation(player) + cfg.days * 86400)
+		newbieKv:set("newbie-xp-bonus", math.floor(cfg.xpBonus * 100))
 		local left = Gerivia.newbieSecondsLeft(player)
 		player:sendTextMessage(MESSAGE_EVENT_ADVANCE, string.format("Bônus de iniciante ativo: +%d%% de experiência e loot extra por mais %s.", math.floor(cfg.xpBonus * 100), Gerivia.formatDuration(left)))
+	else
+		newbieKv:remove("newbie-until")
+		newbieKv:remove("newbie-xp-bonus")
 	end
 	return true
 end
 
 welcome:register()
 
--- +XP na hunt ativa (mortes de criaturas). addExperience do idle não passa aqui.
-local newbieXp = EventCallback("GeriviaNewbieExperience")
-
-function newbieXp.playerOnGainExperience(player, target, exp, rawExp)
-	if exp > 0 and target and target:isMonster() and Gerivia.isNewbie(player) then
-		exp = math.floor(exp * (1 + Gerivia.Config.newbie.xpBonus) + 0.5)
-	end
-	return exp
-end
-
-newbieXp:register()
+-- +XP na hunt ativa: o EventCallback playerOnGainExperience do Canary ignora o valor
+-- retornado, então o bônus é aplicado no Player:onGainExperience
+-- (data/events/scripts/player.lua). Aquele arquivo roda em outro estado Lua e não vê
+-- a tabela Gerivia; por isso o login grava o prazo e o bônus no kv do jogador.
 
 -- Loot extra: com chance lootBonus, o corpo recebe uma segunda rolagem de loot.
 local newbieLoot = EventCallback("GeriviaNewbieLoot")

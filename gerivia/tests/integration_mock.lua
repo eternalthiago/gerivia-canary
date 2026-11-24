@@ -38,7 +38,7 @@ function EventCallback(name)
 	return e
 end
 
-local ITEMS = { ["couro de javali"] = { id = 100, stack = true }, ["seda de musgo"] = { id = 101, stack = true } }
+local ITEMS = { ["couro de javali"] = { id = 100, stack = true }, ["seda de musgo"] = { id = 101, stack = true }, ["punhado de trigo"] = { id = 102, stack = true, fixed = true } }
 function ItemType(x)
 	local it = { }
 	if type(x) == "number" then
@@ -50,6 +50,7 @@ function ItemType(x)
 	local d = ITEMS[x]
 	function it:getId() return d and d.id or 0 end
 	function it:isStackable() return d and d.stack or false end
+	function it:isPickupable() return d ~= nil and not d.fixed end
 	return it
 end
 
@@ -109,6 +110,7 @@ local function kvStore()
 		function s:scoped(name) return scoped(prefix .. name .. ".") end
 		function s:get(k) return data[prefix .. k] end
 		function s:set(k, v) data[prefix .. k] = v end
+		function s:remove(k) data[prefix .. k] = nil end
 		return s
 	end
 	return scoped("")
@@ -140,7 +142,7 @@ local function newPlayer(o)
 	function p:kv() return self.kvs end
 	function p:setFeature(f, v) self.kvs:scoped("features"):set(f, v) end
 	function p:addPremiumDays(d) self.premium = self.premium + d end
-	function p:getInbox() local pl = self; return { addItem = function(_, id, n) pl.inbox[id] = (pl.inbox[id] or 0) + n end } end
+	function p:getInbox() local pl = self; return { addItem = function(_, id, n) pl.inbox[id] = (pl.inbox[id] or 0) + n; return true end } end
 	players[p.guid] = p
 	return p
 end
@@ -167,12 +169,12 @@ check(Gerivia.isNewbie(p), "conta de 2 dias é iniciante")
 local veteran = newPlayer({ guid = 2, acc = 2, level = 22, bank = 10000, ip = 88 })
 check(not Gerivia.isNewbie(veteran), "conta de 30 dias não é iniciante")
 
--- XP de iniciante na hunt ativa
-local cb
-for _, c in ipairs(handlers.cb) do if c.playerOnGainExperience then cb = c end end
-local monster = { isMonster = function() return true end }
-check(cb.playerOnGainExperience(p, monster, 100, 100) == 150, "+50% XP para iniciante")
-check(cb.playerOnGainExperience(veteran, monster, 100, 100) == 100, "sem bônus para veterano")
+-- XP de iniciante na hunt ativa: o login grava prazo e bônus no kv, lidos pelo
+-- Player:onGainExperience (data/events/scripts/player.lua)
+check((p.kvs:scoped("gerivia"):get("newbie-until") or 0) > now, "kv newbie-until gravado para iniciante")
+check(p.kvs:scoped("gerivia"):get("newbie-xp-bonus") == 50, "kv newbie-xp-bonus = 50")
+login(veteran)
+check(veteran.kvs:scoped("gerivia"):get("newbie-until") == nil, "veterano sem kv de iniciante")
 
 -- !idle sem parâmetro lista áreas
 idle.onSay(p, "!idle", "")
@@ -222,6 +224,7 @@ check(p.stamina == 2520 - 300, "stamina descontada pelas 5 h")
 local inboxCount = 0
 for _ in pairs(p.inbox) do inboxCount = inboxCount + 1 end
 check(inboxCount > 0, "itens existentes vão para o inbox")
+check(p.inbox[102] == nil, "item que não pode ser carregado vira ouro, não vai para o inbox")
 check(rows[1].result:find('"goldFromMissingItems"'), "itens inexistentes viram ouro e ficam no relatório")
 
 -- volta em menos de 10 min: cancela com reembolso total

@@ -169,16 +169,23 @@ local function deliverItems(player, items)
 	for _, it in ipairs(items) do
 		local itemType = ItemType(it.name)
 		local id = itemType and itemType:getId() or 0
-		if id == 0 or not inbox then
+		-- Item inexistente ou que não pode ser carregado (ex.: "wheat" do mapa) vira ouro.
+		if id == 0 or not inbox or not itemType:isPickupable() then
 			goldFromMissing = goldFromMissing + it.count * it.value
 		else
 			local left = it.count
 			while left > 0 do
 				local n = itemType:isStackable() and math.min(100, left) or 1
-				inbox:addItem(id, n, INDEX_WHEREEVER, FLAG_NOLIMIT)
+				if not inbox:addItem(id, n, INDEX_WHEREEVER, FLAG_NOLIMIT) then
+					break
+				end
 				left = left - n
 			end
-			delivered[#delivered + 1] = string.format("%dx %s", it.count, it.name)
+			-- O que não coube/não entrou também é pago em ouro, nada se perde.
+			goldFromMissing = goldFromMissing + left * it.value
+			if left < it.count then
+				delivered[#delivered + 1] = string.format("%dx %s", it.count - left, it.name)
+			end
 		end
 	end
 	return goldFromMissing, delivered

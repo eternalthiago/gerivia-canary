@@ -47,3 +47,15 @@ docker compose -f docker-compose.yml -f gerivia/docker-compose.web.yml up -d --b
 ```
 
 O cliente web precisa apontar o login para `ws://<host>:8080/ws/login` e o jogo para `ws://<host>:8080/ws/game` (em produção, `wss://`).
+
+## Testar num servidor local (Docker)
+
+`docker/gerivia/test/` monta uma imagem a partir do runtime publicado do Canary com só os arquivos do Gerivia por cima:
+
+```bash
+cd docker
+cp .env.dist .env
+docker compose -f docker-compose.yml -f gerivia/test/docker-compose.test.yml up -d --build db server
+```
+
+Testado assim em 24/11/2026: carga dos scripts, criação da tabela, VIP de boas-vindas, bônus de iniciante (XP e loot), loot automático com ouro no banco, `!idle` com validações, entrega no relog, cancelamento com reembolso e teto de 12 h sem VIP.
