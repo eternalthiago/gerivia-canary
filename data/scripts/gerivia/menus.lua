@@ -185,7 +185,7 @@ local function knownSpells(player, group)
 	for _, sp in ipairs(player:getInstantSpells() or {}) do
 		local spell = Spell(sp.words)
 		local primary = spell and spell:group()
-		if primary == group and sp.words and sp.words ~= "" then
+		if primary == group and Bot().canUseSpell(player, sp.words) and sp.words and sp.words ~= "" then
 			out[#out + 1] = { name = sp.name, words = sp.words, level = sp.level or 0 }
 		end
 	end

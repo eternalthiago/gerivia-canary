@@ -198,6 +198,16 @@ local function newPlayer(o)
 	function p:isVip()
 		return self.vip
 	end
+	function p:isPremium()
+		return self.vip
+	end
+	function p:getVocation()
+		return {
+			getName = function()
+				return "Knight"
+			end,
+		}
+	end
 	function p:getExperience()
 		return self.xp
 	end
@@ -270,6 +280,10 @@ local function newPlayer(o)
 			{ name = "Intense Healing", words = "exura gran", level = 20 },
 			{ name = "Energy Strike", words = "exori vis", level = 12 },
 			{ name = "Light", words = "utevo lux", level = 8 },
+			{ name = "Wound Cleansing", words = "exura med ico", level = 8 },
+			{ name = "Brutal Strike", words = "exori", level = 16 },
+			{ name = "Whirlwind Throw", words = "exori gran", level = 28 },
+			{ name = "Fierce Berserk", words = "exori gran mas", level = 90 },
 		}
 	end
 	function p:getSlotItem(slot)
@@ -338,11 +352,36 @@ function Game.createMonster(name, pos)
 	m.spawned = true
 	return m
 end
-local SPELL_GROUPS = { ["exura"] = 2, ["exura gran"] = 2, ["exori vis"] = 1, ["utevo lux"] = 3 }
+local SPELL_GROUPS = {
+	["exura"] = 2,
+	["exura gran"] = 2,
+	["exori vis"] = 1,
+	["utevo lux"] = 3,
+	["exura med ico"] = 2,
+	["exori"] = 1,
+	["exori gran"] = 1,
+	["exori gran mas"] = 1,
+}
+-- exori vis é de outra vocação (aprendida, mas o jogador não consegue usar); exori gran mas é premium.
+local SPELL_VOCATIONS = { ["exori vis"] = { "Sorcerer", "Master Sorcerer" }, ["exori"] = { "Knight", "Elite Knight" } }
+local SPELL_PREMIUM = { ["exori gran mas"] = true }
 function Spell(words)
+	if not SPELL_GROUPS[words] then
+		return nil
+	end
 	return {
 		group = function()
 			return SPELL_GROUPS[words], 0
+		end,
+		isPremium = function()
+			return SPELL_PREMIUM[words] == true
+		end,
+		vocation = function()
+			local t = {}
+			for i, v in ipairs(SPELL_VOCATIONS[words] or {}) do
+				t[tostring(i)] = v
+			end
+			return t
 		end,
 	}
 end
@@ -420,6 +459,11 @@ check(last(p):find("CANCEL"), "recusa poção desconhecida")
 local s = Gerivia.Bot.getSettings(p)
 check(s.healAt == 60 and s.healPotion == "great health potion" and s.manaAt == 40, "salva cura e mana")
 check(s.attackSpells == "exori;exori gran", "magias sem repetição")
+bot.onSay(p, "!bot", "magia exori vis")
+check(last(p):find("não consegue usar"), "recusa magia de outra vocação")
+bot.onSay(p, "!bot", "magia exori gran mas")
+check(last(p):find("não consegue usar"), "recusa magia premium sem VIP")
+check(Gerivia.Bot.getSettings(p).attackSpells == "exori;exori gran", "magias recusadas não entram na lista")
 check(s.targets == "wolf", "lista de alvos")
 bot.onSay(p, "!bot", "vender add wolf paw")
 check(last(p):find("VIP"), "vender é só VIP")
@@ -539,15 +583,20 @@ press(m, "Escolher", "Abaixo de 60%")
 local ms_ = Gerivia.Bot.getSettings(m)
 check(ms_.healPotion == "great health potion" and ms_.healAt == 60, "menu salva poção e porcentagem")
 press(m, "Abrir", "Magia de cura")
-check(#lastWindow[10].choices == 3, "lista só magias de cura conhecidas (+ nenhuma)")
+check(#lastWindow[10].choices == 4, "lista só magias de cura conhecidas (+ nenhuma)")
 press(m, "Escolher", "exura gran")
 press(m, "Escolher", "Abaixo de 50%")
 check(Gerivia.Bot.getSettings(m).healSpell == "exura gran", "menu salva magia de cura")
 press(m, "Abrir", "Magias de ataque")
-check(#lastWindow[10].choices == 1, "lista só magias de ataque")
-press(m, "Marcar", "exori vis")
-check(Gerivia.Bot.getSettings(m).attackSpells == "exori vis", "marca magia de ataque")
-press(m, "Marcar", "exori vis")
+check(#lastWindow[10].choices == 3, "lista só magias de ataque que consegue usar (VIP vê a premium)")
+local hasOtherVoc = false
+for _, c in ipairs(lastWindow[10].choices) do
+	hasOtherVoc = hasOtherVoc or c.text:find("exori vis", 1, true) ~= nil
+end
+check(not hasOtherVoc, "não lista magia de outra vocação")
+press(m, "Marcar", "(exori)")
+check(Gerivia.Bot.getSettings(m).attackSpells == "exori", "marca magia de ataque")
+press(m, "Marcar", "(exori)")
 check(Gerivia.Bot.getSettings(m).attackSpells == "", "desmarca magia de ataque")
 press(m, "Voltar")
 press(m, "Abrir", "Repor itens")
@@ -571,6 +620,12 @@ for _, c in ipairs(lastWindow[11].choices) do
 	end
 end
 check(not hasVipOnly, "sem VIP não tem reposição no menu")
+press(nv, "Abrir", "Magias de ataque")
+local hasPremium = false
+for _, c in ipairs(lastWindow[11].choices) do
+	hasPremium = hasPremium or c.text:find("exori gran mas", 1, true) ~= nil
+end
+check(#lastWindow[11].choices == 2 and not hasPremium, "sem VIP não lista magia premium")
 
 -- ---------- respawn privado (VIP) ----------
 local PHC = Gerivia.PrivateHuntConfig

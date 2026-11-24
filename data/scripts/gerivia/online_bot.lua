@@ -92,6 +92,36 @@ function parseRoute(str)
 end
 Bot.parseRoute = parseRoute
 
+-- Magia que o jogador consegue lançar: aprendida, da vocação dele e, se for
+-- premium, só com conta premium/VIP (senão o bot tentaria e falharia sempre).
+function Bot.canUseSpell(player, words)
+	local known = false
+	for _, sp in ipairs(player:getInstantSpells() or {}) do
+		if sp.words == words then
+			known = true
+			break
+		end
+	end
+	local spell = known and Spell(words)
+	if not spell then
+		return false
+	end
+	if spell:isPremium() and not player:isPremium() then
+		return false
+	end
+	local vocations = spell:vocation()
+	if type(vocations) ~= "table" or next(vocations) == nil then
+		return true
+	end
+	local mine = player:getVocation():getName():lower()
+	for _, name in pairs(vocations) do
+		if type(name) == "string" and name:lower() == mine then
+			return true
+		end
+	end
+	return false
+end
+
 -- Alertas ------------------------------------------------------------------
 
 -- state = nil: usa a sessão ativa para não repetir o alerta; false: sempre envia.
@@ -647,6 +677,10 @@ function talk.onSay(player, words, param)
 			player:sendCancelMessage("Use: !bot curamagia <porcentagem> <palavras da magia>")
 			return true
 		end
+		if not Bot.canUseSpell(player, spell:lower()) then
+			player:sendCancelMessage("Você não consegue usar essa magia (precisa aprender, ser da sua vocação ou ter VIP).")
+			return true
+		end
 		setSetting(player, "healSpellAt", math.min(95, tonumber(pct)))
 		setSetting(player, "healSpell", spell:lower())
 		player:sendTextMessage(MESSAGE_EVENT_ADVANCE, string.format("[Bot] Usará %s abaixo de %s%%.", spell:lower(), pct))
@@ -654,6 +688,10 @@ function talk.onSay(player, words, param)
 		if rest:lower() == "limpar" then
 			setSetting(player, "attackSpells", "")
 		elseif rest ~= "" then
+			if not Bot.canUseSpell(player, rest:lower()) then
+				player:sendCancelMessage("Você não consegue usar essa magia (precisa aprender, ser da sua vocação ou ter VIP).")
+				return true
+			end
 			local list, ok = appendList(s.attackSpells, rest:lower(), cfg().maxAttackSpells)
 			if not ok then
 				player:sendCancelMessage("Máximo de " .. cfg().maxAttackSpells .. " magias de ataque.")
