@@ -76,7 +76,7 @@ check(rE.suppliesRefund == math.floor(rE.suppliesCost * 0.75), "reembolso propor
 local big = { area = Gerivia.getIdleArea("trigal"), snapshot = { level = 200, gear = 300, stamina = 2520 }, elapsed = 12 * 3600, maxSeconds = 12 * 3600, seed = 7, config = cfg }
 local rB = C.simulate(big)
 check(rB.kills > cfg.idle.exactRollMaxKills, "cenário com aproximação estatística")
-local expectedGold = rB.kills * 2
+local expectedGold = rB.kills * (big.area.goldMin + big.area.goldMax) / 2
 check(math.abs(rB.gold - expectedGold) / expectedGold < 0.05, "ouro perto da média no caminho estatístico")
 
 -- 8. risco de recuo só abaixo da eficiência limite

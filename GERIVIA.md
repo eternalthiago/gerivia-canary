@@ -21,8 +21,8 @@ Todos os números ficam em `data/scripts/lib/gerivia_config.lua` e `gerivia_idle
 
 ## Antes de ligar em produção
 
-- As áreas idle usam nomes de itens provisórios. Troque pelos nomes ou IDs de itens que existem no seu datapack; item inexistente vira ouro (campo `value`).
-- Ajuste `recLevel`, `recGear`, `killsPerHour` e `xpPerKill` de cada área para as hunts reais do seu mapa.
+- As 5 áreas idle usam criaturas e itens reais do datapack (Rotworms, Minotauros, Ciclopes, Dragões e Aranhas Gigantes), com chances tiradas dos arquivos de monstro. O `value` de cada item é um preço de NPC estimado; confira com os NPCs do servidor.
+- Ajuste `killsPerHour`, `recGear` e `suppliesPerHour` de cada área no beta, olhando o lucro real das hunts.
 - O `xpRate` da calculadora está fixo em 1: confira como os stages de XP do servidor se aplicam ao `addExperience` e ajuste no beta.
 - O bot usa duas funções novas em C++ (`player:resetIdleTime()` e `player:castSpellByWords(palavras)`, em `src/lua/functions/creatures/player/player_functions.cpp`). Precisa recompilar o servidor. Sem elas o bot ainda cura com poção, ataca e anda, mas não usa magias e o personagem pode ser desconectado por inatividade.
 - Os preços de venda e de poções do bot estão em `gerivia_bot_config.lua`, porque o Canary não tem preço de NPC acessível por script. Confira com os NPCs do seu datapack.

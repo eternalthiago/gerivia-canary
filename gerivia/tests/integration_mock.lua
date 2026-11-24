@@ -58,7 +58,7 @@ function EventCallback(name)
 	return e
 end
 
-local ITEMS = { ["couro de javali"] = { id = 100, stack = true }, ["seda de musgo"] = { id = 101, stack = true }, ["punhado de trigo"] = { id = 102, stack = true, fixed = true } }
+local ITEMS = { ["minotaur horn"] = { id = 100, stack = true }, ["plate shield"] = { id = 101, stack = false }, ["chain armor"] = { id = 102, stack = false, fixed = true } }
 function ItemType(x)
 	local it = {}
 	if type(x) == "number" then
@@ -336,7 +336,7 @@ check(veteran.kvs:scoped("gerivia"):get("newbie-until") == nil, "veterano sem kv
 
 -- !idle sem parâmetro lista áreas
 idle.onSay(p, "!idle", "")
-check(p.msgs[#p.msgs]:find("Bosque Sussurrante"), "lista de áreas")
+check(p.msgs[#p.msgs]:find("Labirinto dos Minotauros"), "lista de áreas")
 
 -- validações
 p.pz = false
