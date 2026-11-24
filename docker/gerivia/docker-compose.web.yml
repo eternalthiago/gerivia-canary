@@ -4,6 +4,7 @@
 # O navegador não abre TCP direto: o websockify traduz WebSocket <-> TCP para as
 # portas de login (7171) e de jogo (7172). O nginx serve o cliente web com os
 # cabeçalhos COOP/COEP que o build WebAssembly do OTClient exige.
+---
 services:
   ws-login:
     build: ./gerivia/websockify
