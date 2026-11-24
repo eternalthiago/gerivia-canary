@@ -1,0 +1,33 @@
+# Gerivia: camada web por cima do quickstart do Canary (docker/docker-compose.yml).
+# Uso, dentro da pasta docker/:
+#   docker compose -f docker-compose.yml -f gerivia/docker-compose.web.yml up -d --build
+# O navegador não abre TCP direto: o websockify traduz WebSocket <-> TCP para as
+# portas de login (7171) e de jogo (7172). O nginx serve o cliente web com os
+# cabeçalhos COOP/COEP que o build WebAssembly do OTClient exige.
+---
+services:
+  ws-login:
+    build: ./gerivia/websockify
+    restart: unless-stopped
+    command: ["websockify", "0.0.0.0:7271", "server:7171"]
+    networks: [canary-net]
+    depends_on: [server]
+
+  ws-game:
+    build: ./gerivia/websockify
+    restart: unless-stopped
+    command: ["websockify", "0.0.0.0:7272", "server:7172"]
+    networks: [canary-net]
+    depends_on: [server]
+
+  web:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    ports:
+      - "${GERIVIA_HTTP_PORT:-8080}:80"
+    volumes:
+      - ./gerivia/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      # Coloque aqui o build web do OTClient (index.html, .wasm, .data, .js)
+      - ./gerivia/webclient:/usr/share/nginx/html/play:ro
+    networks: [canary-net]
+    depends_on: [ws-login, ws-game]

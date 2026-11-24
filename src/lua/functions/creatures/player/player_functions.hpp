@@ -298,6 +298,8 @@ class PlayerFunctions {
 	static int luaPlayerSetXpBoostTime(lua_State* L);
 
 	static int luaPlayerGetIdleTime(lua_State* L);
+	static int luaPlayerResetIdleTime(lua_State* L);
+	static int luaPlayerCastSpellByWords(lua_State* L);
 	static int luaPlayerGetFreeBackpackSlots(lua_State* L);
 
 	static int luaPlayerOpenMarket(lua_State* L);

@@ -592,6 +592,13 @@ function Player:onGainExperience(target, exp, rawExp)
 		end
 	end
 
+	-- Gerivia: bônus de iniciante (gravado no kv pelo data/scripts/gerivia/newbie_vip.lua)
+	local geriviaKv = self:kv():scoped("gerivia")
+	local newbieUntil = geriviaKv:get("newbie-until") or 0
+	if newbieUntil > os.time() then
+		exp = exp * (1 + (geriviaKv:get("newbie-xp-bonus") or 0) / 100)
+	end
+
 	-- Final Adjustments: Low Level Bonus and Base Rate
 	local lowLevelBonusExp = self:getFinalLowLevelBonus()
 	local baseRateExp = self:getFinalBaseRateExperience()

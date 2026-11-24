@@ -389,6 +389,8 @@ void PlayerFunctions::init(lua_State* L) {
 	Lua::registerMethod(L, "Player", "setXpBoostTime", PlayerFunctions::luaPlayerSetXpBoostTime);
 
 	Lua::registerMethod(L, "Player", "getIdleTime", PlayerFunctions::luaPlayerGetIdleTime);
+	Lua::registerMethod(L, "Player", "resetIdleTime", PlayerFunctions::luaPlayerResetIdleTime);
+	Lua::registerMethod(L, "Player", "castSpellByWords", PlayerFunctions::luaPlayerCastSpellByWords);
 	Lua::registerMethod(L, "Player", "getFreeBackpackSlots", PlayerFunctions::luaPlayerGetFreeBackpackSlots);
 
 	Lua::registerMethod(L, "Player", "isOffline", PlayerFunctions::luaPlayerIsOffline);
@@ -4078,6 +4080,50 @@ int PlayerFunctions::luaPlayerGetIdleTime(lua_State* L) {
 	} else {
 		lua_pushnil(L);
 	}
+	return 1;
+}
+
+/***
+ * @function Player:resetIdleTime
+ * Resets the idle timer so the player is not kicked for inactivity.
+ * @return boolean
+ */
+int PlayerFunctions::luaPlayerResetIdleTime(lua_State* L) {
+	// player:resetIdleTime()
+	const auto &player = Lua::getUserdataShared<Player>(L, 1, "Player");
+	if (!player) {
+		Lua::pushBoolean(L, false);
+		return 1;
+	}
+
+	player->resetIdleTime();
+	Lua::pushBoolean(L, true);
+	return 1;
+}
+
+/***
+ * @function Player:castSpellByWords
+ * Casts an instant spell as if the player had said it: vocation, level, mana,
+ * cooldown and target checks all apply. Returns true only when the spell was cast.
+ * @param words string
+ * @return boolean
+ */
+int PlayerFunctions::luaPlayerCastSpellByWords(lua_State* L) {
+	// player:castSpellByWords(words)
+	const auto &player = Lua::getUserdataShared<Player>(L, 1, "Player");
+	if (!player) {
+		Lua::pushBoolean(L, false);
+		return 1;
+	}
+
+	std::string words = Lua::getString(L, 2);
+	if (words.empty()) {
+		Lua::pushBoolean(L, false);
+		return 1;
+	}
+
+	const TalkActionResult_t result = g_spells().playerSaySpell(player, words);
+	Lua::pushBoolean(L, result == TALKACTION_BREAK);
 	return 1;
 }
 

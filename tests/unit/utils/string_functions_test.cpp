@@ -54,3 +54,13 @@ TEST(HashFunctionsTest, TransformToSHA256MatchesCanonicalVectors) {
 	EXPECT_EQ("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", transformToSHA256(""));
 	EXPECT_EQ("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad", transformToSHA256("abc"));
 }
+
+TEST(TimeFormatTest, FormattedTimeRemainingShowsHoursForOneDay) {
+	// Offsets carry a 30 s margin so a second ticking during the test does not change the result.
+	const auto now = static_cast<uint32_t>(getTimeNow());
+	EXPECT_EQ("24 hours", getFormattedTimeRemaining(now + 86400 + 30));
+	EXPECT_EQ("29 hours", getFormattedTimeRemaining(now + 86400 + 5 * 3600 + 30));
+	EXPECT_EQ("3 days", getFormattedTimeRemaining(now + 3 * 86400 + 30));
+	EXPECT_EQ("1 hour and 1 minute", getFormattedTimeRemaining(now + 3660 + 30));
+	EXPECT_EQ("less than 1 minute", getFormattedTimeRemaining(now + 30));
+}
