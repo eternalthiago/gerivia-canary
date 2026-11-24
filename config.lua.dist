@@ -71,7 +71,7 @@ legacy1100GameProtocolPort = 0
 legacy860GameProtocolPort = 0
 statusProtocolPort = 7171
 maxPlayers = 0
-serverName = "OTServBR-Global"
+serverName = "Gerivia"
 serverMotd = "Welcome to the OTServBR-Global!"
 statusTimeout = 5 * 1000
 replaceKickOnLogin = true
@@ -304,8 +304,8 @@ onlyPremiumAccount = false
 -- NOTE: minTownIdToBankTransferFromMain blocks towns less than defined from receiving money transfers
 -- NOTE: enableSupportOutfit enable GODS and GMS to select support outfit (gamemaster, customer support or community manager)
 depotChest = 4
-autoLoot = false
-autoBank = false
+autoLoot = true
+autoBank = true
 toggleGoldPouchAllowAnything = false
 toggleGoldPouchQuickLootOnly = false
 toggleTravelsFree = false
@@ -650,8 +650,8 @@ discordWebhookDelayMs = 1000
 -- 		If you use 'vipFamiliarTimeCooldownReduction' greater than half of 'familiarTime', it will get the highest possible value, in this case 15
 -- NOTE: GainCoin function, please configure script: data-otservbr-global/scripts/globalevents/vip/online_coins.lua
 -- NOTE: GainToken function, please configure script: data-otservbr-global/scripts/globalevents/vip/online_tokens.lua
-vipSystemEnabled = false
-vipBonusExp = 0
+vipSystemEnabled = true
+vipBonusExp = 10
 vipBonusLoot = 0
 vipBonusSkill = 0
 vipAutoLootVipOnly = false

@@ -1,0 +1,34 @@
+-- Gerivia: cria as tabelas próprias na inicialização, sem mexer nas migrations do Canary
+-- (evita conflito de numeração quando o Canary oficial for atualizado).
+
+local setup = GlobalEvent("GeriviaDatabaseSetup")
+
+function setup.onStartup()
+	local ok = db.query([[
+CREATE TABLE IF NOT EXISTS `idle_hunts` (
+    `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+    `player_id` int(11) NOT NULL,
+    `account_id` int(11) UNSIGNED NOT NULL,
+    `area_id` varchar(32) NOT NULL,
+    `started_at` int(11) UNSIGNED NOT NULL,
+    `max_seconds` int(11) UNSIGNED NOT NULL,
+    `supplies_cost` bigint(20) UNSIGNED NOT NULL DEFAULT 0,
+    `rng_seed` int(11) UNSIGNED NOT NULL,
+    `ip` int(11) UNSIGNED NOT NULL DEFAULT 0,
+    `snapshot` text NOT NULL,
+    `status` enum('active','done','cancelled') NOT NULL DEFAULT 'active',
+    `finished_at` int(11) UNSIGNED NOT NULL DEFAULT 0,
+    `result` text NULL,
+    CONSTRAINT `idle_hunts_pk` PRIMARY KEY (`id`),
+    INDEX `idle_hunts_player_status` (`player_id`, `status`),
+    INDEX `idle_hunts_account_status` (`account_id`, `status`),
+    INDEX `idle_hunts_ip_status` (`ip`, `status`),
+    CONSTRAINT `idle_hunts_players_fk` FOREIGN KEY (`player_id`) REFERENCES `players` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4]])
+	if not ok then
+		logger.error("[Gerivia] Falha ao criar a tabela idle_hunts")
+	end
+	return true
+end
+
+setup:register()
