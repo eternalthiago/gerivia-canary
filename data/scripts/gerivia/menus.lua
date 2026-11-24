@@ -481,7 +481,7 @@ end
 function Menu.botRoute(player)
 	local s = Bot().getSettings(player)
 	local n = #Bot().parseRoute(s.route)
-	local msg = string.format("A rota tem %d pontos.\nAnde até cada ponto da hunt e escolha \"Adicionar posição atual\".\nSem alvos, o bot anda pelos pontos em ordem.", n)
+	local msg = string.format('A rota tem %d pontos.\nAnde até cada ponto da hunt e escolha "Adicionar posição atual".\nSem alvos, o bot anda pelos pontos em ordem.', n)
 	window(player, "Rota", msg, { "Adicionar posição atual", "Limpar rota" }, {
 		{
 			"Escolher",

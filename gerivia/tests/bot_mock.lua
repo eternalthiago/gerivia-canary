@@ -525,7 +525,6 @@ bot.onSay(v, "!bot", "on")
 handlers.ev.GeriviaBotLogout.onLogout(v)
 check(not Gerivia.Bot.active[3], "logout desliga")
 
-
 -- ---------- menus ----------
 creatures = {}
 local m = newPlayer({ id = 10, items = { [239] = 5 }, bank = 100000, vip = true, level = 50 })
