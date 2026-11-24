@@ -21,6 +21,19 @@ CREATE TABLE IF NOT EXISTS `idle_hunts` (
     CONSTRAINT `idle_hunts_players_fk` FOREIGN KEY (`player_id`) REFERENCES `players` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- Alertas do bot (vida baixa, supply, capacidade, jogador perto, morte, fim) para o site.
+CREATE TABLE IF NOT EXISTS `gerivia_alerts` (
+    `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+    `player_id` int(11) NOT NULL,
+    `created_at` int(11) UNSIGNED NOT NULL,
+    `kind` varchar(32) NOT NULL,
+    `message` varchar(255) NOT NULL,
+    `seen` tinyint(1) NOT NULL DEFAULT 0,
+    CONSTRAINT `gerivia_alerts_pk` PRIMARY KEY (`id`),
+    INDEX `gerivia_alerts_player_time` (`player_id`, `created_at`),
+    CONSTRAINT `gerivia_alerts_players_fk` FOREIGN KEY (`player_id`) REFERENCES `players` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 -- Visão para o painel de GM: XP e ouro gerados pelo idle por dia.
 CREATE OR REPLACE VIEW `idle_daily_economy` AS
 SELECT
