@@ -477,7 +477,9 @@ function Bot.dbUpdate(player, state, stopReason)
 	if stopReason then
 		final = string.format(", `status` = 'stopped', `ended_at` = %d, `stop_reason` = %s", now(), db.escapeString(stopReason))
 	end
-	db.query(string.format("UPDATE `gerivia_bot_sessions` SET `updated_at` = %d, `xp` = %d, `potions_used` = %d, `kills` = %d, `loot_value` = %d, `supplies_spent` = %d, `settings` = %s%s WHERE `id` = %d", now(), math.max(0, player:getExperience() - state.startXp), state.potionsUsed, state.kills or 0, state.lootValue or 0, state.suppliesSpent or 0, db.escapeString(settingsJson(player)), final, state.dbId))
+	db.query(
+		string.format("UPDATE `gerivia_bot_sessions` SET `updated_at` = %d, `xp` = %d, `potions_used` = %d, `kills` = %d, `loot_value` = %d, `supplies_spent` = %d, `settings` = %s%s WHERE `id` = %d", now(), math.max(0, player:getExperience() - state.startXp), state.potionsUsed, state.kills or 0, state.lootValue or 0, state.suppliesSpent or 0, db.escapeString(settingsJson(player)), final, state.dbId)
+	)
 end
 
 -- Ciclo principal ------------------------------------------------------------
