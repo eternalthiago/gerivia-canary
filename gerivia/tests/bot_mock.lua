@@ -51,12 +51,50 @@ db = {
 		return "'" .. tostring(s) .. "'"
 	end,
 }
+local sessions = {}
 function db.query(q)
 	if q:find("gerivia_alerts") then
 		alerts[#alerts + 1] = q
+	elseif q:find("^INSERT INTO `gerivia_bot_sessions`") then
+		local pid, started = q:match("VALUES %((%d+), (%d+)")
+		sessions[#sessions + 1] = { id = #sessions + 1, player_id = tonumber(pid), started_at = tonumber(started), status = "running", inserted = q }
+	elseif q:find("^UPDATE `gerivia_bot_sessions`") then
+		local id = tonumber(q:match("WHERE `id` = (%d+)$"))
+		local row = sessions[id]
+		if row then
+			row.xp = tonumber(q:match("`xp` = (%d+)"))
+			row.kills = tonumber(q:match("`kills` = (%d+)"))
+			row.loot_value = tonumber(q:match("`loot_value` = (%d+)"))
+			row.supplies_spent = tonumber(q:match("`supplies_spent` = (%d+)"))
+			row.settings = q:match("`settings` = '(.-)'[,%s]")
+			if q:find("`status` = 'stopped'") then
+				row.status = "stopped"
+				row.stop_reason = q:match("`stop_reason` = '(.-)'")
+			end
+		end
 	end
 	return true
 end
+local storeResults = {}
+function db.storeQuery(q)
+	if q:find("FROM `gerivia_bot_sessions`") then
+		local pid, started = q:match("`player_id` = (%d+) AND `started_at` = (%d+)")
+		for i = #sessions, 1, -1 do
+			local r = sessions[i]
+			if r.player_id == tonumber(pid) and r.started_at == tonumber(started) then
+				storeResults[#storeResults + 1] = { id = r.id }
+				return #storeResults
+			end
+		end
+	end
+	return false
+end
+Result = {
+	getNumber = function(id, k)
+		return storeResults[id][k] or 0
+	end,
+	free = function() end,
+}
 
 local ITEMS = { ["great health potion"] = { id = 239, w = 310 }, ["great mana potion"] = { id = 238, w = 310 }, ["wolf paw"] = { id = 5897, w = 80 } }
 function ItemType(name)
@@ -424,6 +462,7 @@ Gerivia = {
 		return s .. "s"
 	end,
 }
+dofile(root .. "/lib/gerivia_json.lua")
 dofile(root .. "/lib/gerivia_bot_config.lua")
 dofile(root .. "/lib/gerivia_private_hunt_config.lua")
 dofile(root .. "/gerivia/online_bot.lua")
@@ -682,6 +721,26 @@ for _, c in ipairs(creatures) do
 end
 check(left == 0, "criaturas da sala somem ao sair")
 check(Gerivia.PrivateHunt.availableFor(m)[1].free == 1, "sala liberada")
+
+-- ---------- sessões do bot no banco (para o site) ----------
+local sp = newPlayer({ id = 20, items = { [239] = 50 }, bank = 100000, vip = true, level = 50, bp = { { name = "wolf paw", count = 4 } } })
+Gerivia.Bot.set(sp, "healPotion", "great health potion")
+Gerivia.Bot.set(sp, "healAt", 50)
+Gerivia.Bot.set(sp, "sellList", "wolf paw")
+Gerivia.Bot.set(sp, "refillList", "great health potion=60")
+Gerivia.Bot.start(sp)
+local row = sessions[#sessions]
+check(row and row.player_id == 20 and row.status == "running", "sessão gravada ao ligar")
+check(row.inserted:find('"healPotion":"great health potion"', 1, true) and row.inserted:find('"refillList":[{"amount":60,"item":"great health potion"}]', 1, true), "configurações em JSON")
+handlers.ev.GeriviaBotKill.onKill(sp, newMonster("Rat", 1, 1))
+sp.xp = sp.xp + 500
+tick()
+now = now + 61
+tick()
+check(row.xp == 500 and row.kills == 1, "atualiza XP e abates a cada minuto")
+check(row.loot_value == 280 and row.supplies_spent == 10 * 190, "registra venda e reposição")
+Gerivia.Bot.stop(sp, "desligado pelo jogador")
+check(row.status == "stopped" and row.stop_reason == "desligado pelo jogador", "fecha a sessão ao desligar")
 
 print(string.format("%d/%d verificações do bot passaram", checks - fails, checks))
 os.exit(fails == 0 and 0 or 1)

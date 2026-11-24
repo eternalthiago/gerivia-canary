@@ -43,6 +43,32 @@ CREATE TABLE IF NOT EXISTS `gerivia_alerts` (
 	if not ok then
 		logger.error("[Gerivia] Falha ao criar a tabela gerivia_alerts")
 	end
+	ok = db.query([[
+CREATE TABLE IF NOT EXISTS `gerivia_bot_sessions` (
+    `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+    `player_id` int(11) NOT NULL,
+    `started_at` int(11) UNSIGNED NOT NULL,
+    `updated_at` int(11) UNSIGNED NOT NULL,
+    `ended_at` int(11) UNSIGNED NOT NULL DEFAULT 0,
+    `status` enum('running','stopped') NOT NULL DEFAULT 'running',
+    `stop_reason` varchar(64) NULL,
+    `xp` bigint(20) UNSIGNED NOT NULL DEFAULT 0,
+    `potions_used` int(11) UNSIGNED NOT NULL DEFAULT 0,
+    `kills` int(11) UNSIGNED NOT NULL DEFAULT 0,
+    `loot_value` bigint(20) UNSIGNED NOT NULL DEFAULT 0,
+    `supplies_spent` bigint(20) UNSIGNED NOT NULL DEFAULT 0,
+    `private_room` tinyint(1) NOT NULL DEFAULT 0,
+    `settings` text NULL,
+    CONSTRAINT `gerivia_bot_sessions_pk` PRIMARY KEY (`id`),
+    INDEX `gerivia_bot_sessions_player_status` (`player_id`, `status`),
+    INDEX `gerivia_bot_sessions_player_started` (`player_id`, `started_at`),
+    CONSTRAINT `gerivia_bot_sessions_players_fk` FOREIGN KEY (`player_id`) REFERENCES `players` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4]])
+	if not ok then
+		logger.error("[Gerivia] Falha ao criar a tabela gerivia_bot_sessions")
+	end
+	-- Sessões que ficaram abertas quando o servidor caiu ou reiniciou.
+	db.query(string.format("UPDATE `gerivia_bot_sessions` SET `status` = 'stopped', `ended_at` = `updated_at`, `stop_reason` = 'restart' WHERE `status` = 'running' AND `updated_at` <= %d", os.time()))
 	return true
 end
 

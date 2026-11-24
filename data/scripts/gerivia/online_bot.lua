@@ -433,6 +433,53 @@ function Bot.refill(player, s)
 	return spent
 end
 
+-- Sessões no banco (gerivia_bot_sessions) para o site --------------------------
+
+local function settingsJson(player)
+	local st = Bot.getSettings(player)
+	local refill = {}
+	for name, qty in pairs(Bot.refillTargets(st)) do
+		refill[#refill + 1] = { item = name, amount = qty }
+	end
+	table.sort(refill, function(a, b)
+		return a.item < b.item
+	end)
+	return Gerivia.toJson({
+		healAt = st.healAt,
+		healPotion = st.healPotion,
+		manaAt = st.manaAt,
+		manaPotion = st.manaPotion,
+		healSpellAt = st.healSpellAt,
+		healSpell = st.healSpell,
+		attackSpells = split(st.attackSpells),
+		targets = split(st.targets),
+		sellList = split(st.sellList),
+		refillList = refill,
+		waypoints = #parseRoute(st.route),
+		privateHunt = Gerivia.PrivateHunt and Gerivia.PrivateHunt.chosenName(player) or nil,
+	})
+end
+
+function Bot.dbStart(player, state)
+	db.query(string.format("INSERT INTO `gerivia_bot_sessions` (`player_id`, `started_at`, `updated_at`, `private_room`, `settings`) VALUES (%d, %d, %d, %d, %s)", player:getGuid(), state.startedAt, state.startedAt, state.privateRoom and 1 or 0, db.escapeString(settingsJson(player))))
+	local resultId = db.storeQuery(string.format("SELECT MAX(`id`) AS `id` FROM `gerivia_bot_sessions` WHERE `player_id` = %d AND `started_at` = %d", player:getGuid(), state.startedAt))
+	if resultId then
+		state.dbId = Result.getNumber(resultId, "id")
+		Result.free(resultId)
+	end
+end
+
+function Bot.dbUpdate(player, state, stopReason)
+	if not state.dbId or state.dbId == 0 then
+		return
+	end
+	local final = ""
+	if stopReason then
+		final = string.format(", `status` = 'stopped', `ended_at` = %d, `stop_reason` = %s", now(), db.escapeString(stopReason))
+	end
+	db.query(string.format("UPDATE `gerivia_bot_sessions` SET `updated_at` = %d, `xp` = %d, `potions_used` = %d, `kills` = %d, `loot_value` = %d, `supplies_spent` = %d, `settings` = %s%s WHERE `id` = %d", now(), math.max(0, player:getExperience() - state.startXp), state.potionsUsed, state.kills or 0, state.lootValue or 0, state.suppliesSpent or 0, db.escapeString(settingsJson(player)), final, state.dbId))
+end
+
 -- Ciclo principal ------------------------------------------------------------
 
 function Bot.stop(player, reason)
@@ -447,6 +494,7 @@ function Bot.stop(player, reason)
 	if state.privateRoom and Gerivia.PrivateHunt then
 		Gerivia.PrivateHunt.leave(player, state.privateRoom, reason ~= "morte")
 	end
+	Bot.dbUpdate(player, state, reason)
 	local xp = player:getExperience() - state.startXp
 	Bot.alert(player, "stop", string.format("Bot desligado: %s. Sessão: %s, +%d XP, %d poções usadas.", reason, Gerivia.formatDuration(now() - state.startedAt), xp, state.potionsUsed), false)
 end
@@ -481,6 +529,7 @@ function Bot.tick(playerId, session)
 	if now() - state.lastUsage >= 60 then
 		addUsage(player, now() - state.lastUsage)
 		state.lastUsage = now()
+		Bot.dbUpdate(player, state)
 		if Bot.minutesLeftToday(player) <= 0 then
 			Bot.stop(player, "limite diário atingido")
 			return
@@ -511,10 +560,10 @@ function Bot.tick(playerId, session)
 	if player:isVip() and nowMs() >= state.nextService then
 		state.nextService = nowMs() + c.vip.serviceEveryMs
 		if c.vip.autoSell and s.sellList ~= "" then
-			Bot.sellLoot(player, s)
+			state.lootValue = (state.lootValue or 0) + Bot.sellLoot(player, s)
 		end
 		if c.vip.autoRefill then
-			Bot.refill(player, s)
+			state.suppliesSpent = (state.suppliesSpent or 0) + Bot.refill(player, s)
 		end
 		cap = player:getFreeCapacity() / 100
 	end
@@ -600,6 +649,8 @@ function Bot.start(player)
 			player:sendTextMessage(MESSAGE_EVENT_ADVANCE, "[Bot] " .. err .. " O bot vai caçar no mapa normal.")
 		end
 	end
+	state.kills, state.lootValue, state.suppliesSpent = 0, 0, 0
+	Bot.dbStart(player, state)
 	addEvent(Bot.tick, cfg().tickMs, player:getId(), Bot.sessionCounter)
 	return true
 end
@@ -790,9 +841,20 @@ function death.onDeath(player)
 end
 death:register()
 
+local kill = CreatureEvent("GeriviaBotKill")
+function kill.onKill(player, target)
+	local state = Bot.active[player:getId()]
+	if state and target and target:isMonster() then
+		state.kills = (state.kills or 0) + 1
+	end
+	return true
+end
+kill:register()
+
 local login = CreatureEvent("GeriviaBotLogin")
 function login.onLogin(player)
 	player:registerEvent("GeriviaBotDeath")
+	player:registerEvent("GeriviaBotKill")
 	return true
 end
 login:register()
